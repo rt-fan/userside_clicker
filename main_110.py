@@ -4,11 +4,12 @@ import pytesseract as pt
 import cv2
 
 pt.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+flag = True
+flag2 = False
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    МАСШТАБ МЕНЯЕМ НА 110 %    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-while True:
+while flag:
     i = 1
 
     ##################################################################################################################
@@ -19,41 +20,52 @@ while True:
     # Ищем на главной странице координаты изображения "MAC", исходя из них, делаем скрины и распознаем значения
     # ... UPLINK-порта и количества MAC-адресов с UPLINK-порта.
 
-    sleep(10)
-
     ip = ""
     uplink_port = ""
     uplink_mac = ""
+    mac_pos = None
 
-    mac_pos = pa.locateOnScreen("image\\110_search_mac_main.png", confidence=0.9)
+    while True:
+        a = pa.locateOnScreen("image\\110_search_mac_main.png", confidence=0.8)
+        if a is not None:
+            mac_pos = a
+            break
+        else:
+            sleep(2)
+            print("Жду главный экран...")
 
     try:
-        # pa.screenshot('temp_img\\110_main_port.png',                                          >>>>>>>>>>>>>>>>>>>>>>
-        #               region=(1050, mac_pos[1] + 42, 76, 19))  # скрин номера uplink-порта
-        # uplink_port_img = cv2.imread('temp_img\\110_main_port.png')
-        # uplink_port_img = cv2.cvtColor(uplink_port_img, cv2.COLOR_BGR2RGB)
-        # config = r'--oem 3 --psm 6'
-        # uplink_port = pt.image_to_string(uplink_port_img, config=config)
-        # uplink_port = uplink_port.strip().split("/")[-1]
-        #
-        # pa.screenshot('temp_img\\110_main_mac.png',
-        #               region=(1130, mac_pos[1] + 42, 40, 19))  # скрин количества мак-адресов
-        # uplink_mac_img = cv2.imread('temp_img\\110_main_mac.png')
-        # uplink_mac_img = cv2.cvtColor(uplink_mac_img, cv2.COLOR_BGR2RGB)
-        # config = r'--oem 3 --psm 6'
-        # uplink_mac = pt.image_to_string(uplink_mac_img, config=config)
-        # uplink_mac = uplink_mac.strip()                                                       <<<<<<<<<<<<<<<<<<<<<<
-
-        pa.screenshot('temp_img\\110_main_port_mac.png', region=(1100, mac_pos[1] + 42, 176, 19))
-        uplink_port_img = cv2.imread('temp_img\\110_main_port_mac.png')
+        pa.screenshot('temp_img\\000_110_main_port_mac.png', region=(415, mac_pos[1] + 42, 900, 19))
+        uplink_port_img = cv2.imread('temp_img\\000_110_main_port_mac.png')
         uplink_port_img = cv2.cvtColor(uplink_port_img, cv2.COLOR_BGR2RGB)
         config = r'--oem 3 --psm 6'
-        uplink_port_mac = pt.image_to_string(uplink_port_img, config=config)
-        uplink_port_mac = uplink_port_mac.strip().split()[0].split("/")[-1]
+        uplink_port_mac_description = pt.image_to_string(uplink_port_img, config=config)
+        print(uplink_port_mac_description)
+        uplink_port_mac = uplink_port_mac_description.strip().split()
+        print(uplink_port_mac)
+        while True:
+            try:
+                uplink_port_mac.remove('=')
+                print(uplink_port_mac)
+            except ValueError:
+                break
+
+        uplink_port_mac = uplink_port_mac[-2]
+        uplink_port_mac = uplink_port_mac.split('/')[-1]
+        if uplink_port_mac == '‘W250':
+            uplink_port_mac = '25'
+        if uplink_port_mac == '260':
+            uplink_port_mac = '26'
+        if uplink_port_mac == '=25':
+            uplink_port_mac = '25'
+
         print(uplink_port_mac)
 
         # Заходим на коммутатор
-        pa.click(480, 460)
+        pa.moveTo(480, mac_pos[1] + 45)
+        sleep(1)
+        pa.click(480, mac_pos[1] + 45)
+        # sleep(2)
 
     except TypeError:
         with open('110_log.txt', 'a') as line:
@@ -73,7 +85,13 @@ while True:
     # преобразуем в список, который проверяем на подходящие значения (чтоб мак-адресов не было меньше 3, чтоб были
     # числовые значения).
 
-    sleep(10)
+    while True:
+        on = pa.locateCenterOnScreen("image\\110_link_green_on.png", confidence=0.6)
+        if on is not None:
+            break
+        else:
+            sleep(2)
+            print("Жду загрузку окна с портами...")
 
     # НАХОДИМ, РАСПОЗНАЕМ И ЗАПИСЫВАЕМ IP-АДРЕС КОММУТАТОРА  *********************************************************
 
@@ -100,7 +118,6 @@ while True:
 
     # ДЕЛАЕМ СКРИНЫ ОБЛАСТЕЙ "MAC" И "DESCR"  ************************************************************************
 
-#    i = 1
     dict_i = 1
     dict_j = 1
     dict1 = {}
@@ -149,8 +166,12 @@ while True:
                     p = p.replace("GigabitEthernet0/0/", "")
                 if p.find("Ethernet1/"):
                     p = p.replace("Ethernet1/", "")
+                if p.find("Ethernet1/0/"):
+                    p = p.replace("Ethernet1/0/", "")
                 if p.find("Ethernet0/0/"):
                     p = p.replace("Ethernet0/0/", "")
+                if p.find("Ethernet1/0/"):
+                    p = p.replace("Ethernet1/0/", "")
                 if p.find("1/"):
                     p = p.replace("1/", "")
                 if p.find("."):
@@ -200,7 +221,7 @@ while True:
             dict_j += 1
 
         end_page = pa.locateCenterOnScreen("image\\110_end_page.png", confidence=0.9)
-        if end_page == None:
+        if end_page is None:
             pa.scroll(-1000)
             sleep(0.5)
         else:
@@ -220,28 +241,9 @@ while True:
     unique_numbers = list(set(list3))
     with open('110_log.txt', 'a') as line:
         line.writelines(str(unique_numbers) + '\n')
+        
     print(unique_numbers)
-
-    # print(uplink_port)                                                                        >>>>>>>>>>>>>>>>>>>>>>
-    #
-    # if uplink_port.find(",") != -1:
-    #     uplink_port = uplink_port.replace(",", "")
-    # if uplink_port.find(".") != -1:
-    #     uplink_port = uplink_port.replace(".", "")
-    # if uplink_port.find("V") != -1:
-    #     uplink_port = uplink_port.replace("V", "")
-    #
-    # unique_numbers.remove(uplink_port)
-    #
-    # # преобразуем в строку
-    # downlink_port = ",".join(unique_numbers)
-    # print("UPLINK:", uplink_port)
-    # print("DOWNLINK:", downlink_port)
-    # with open('110_log.txt', 'a') as line:
-    #     line.writelines("UPLINK: " + uplink_port + '\n')
-    #     line.writelines("DOWNLINK: " + downlink_port + '\n')                                  <<<<<<<<<<<<<<<<<<<<<<
-
-    print(uplink_port_mac)
+    print(uplink_port_mac, '<<<')
 
     if uplink_port_mac.find(",") != -1:
         uplink_port_mac = uplink_port_mac.replace(",", "")
@@ -254,12 +256,19 @@ while True:
         uplink_port_mac = uplink_port_mac[:-1]
     if uplink_port_mac.find(")") != -1:
         uplink_port_mac = uplink_port_mac.replace(")", "")
-
+    if uplink_port_mac.find("°") != -1:
+        uplink_port_mac = uplink_port_mac.replace("°", "")
 
     unique_numbers.remove(uplink_port_mac)
 
     # преобразуем в строку
     downlink_port = ",".join(unique_numbers)
+    if "2326TP" in uplink_port_mac_description:  # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Обработка порта Хуавей
+        uplink_port_mac = str(24 + int(uplink_port_mac))
+
+    if "2352TP" in uplink_port_mac_description:
+        uplink_port_mac = str(49 + int(uplink_port_mac))
+
     print("UPLINK:", uplink_port_mac)
     print("DOWNLINK:", downlink_port)
     with open('110_log.txt', 'a') as line:
@@ -272,14 +281,14 @@ while True:
     # if pix[0] == 255:
     #     break
     #
-    # #
+    # 
     #
     # end_line = "#" * 30 + "\n"
     # with open("log.txt", "a") as file:
     #     file.write(end_line)
     # print()  # разделительная полоса
-
-    print('END', '#' * 30, "\n")
+    #
+    # print('END', '#' * 30, "\n")
 
     ##################################################################################################################
     #                                                                                                                #
@@ -292,10 +301,12 @@ while True:
     sleep(0.5)
     while True:
         edit = pa.locateCenterOnScreen("image\\110_edit.png", confidence=0.7)
-        if edit == None:
+        if edit is None:
             pa.scroll(1000)
             sleep(0.5)
         else:
+            pa.moveTo(edit.x, edit.y)
+            sleep(1)
             pa.click(edit.x, edit.y)
             break
 
@@ -303,7 +314,6 @@ while True:
 
     uplink = pa.locateCenterOnScreen("image\\110_uplink.png", confidence=0.8)
     pa.tripleClick(uplink.x + 100, uplink.y)
-    # pa.typewrite(uplink_port)                                                                 <<<<<<<<<<<<<<<<<<<<<<
     pa.typewrite(uplink_port_mac)
 
     downlink = pa.locateCenterOnScreen("image\\110_downlink.png", confidence=0.8)
@@ -321,25 +331,41 @@ while True:
 
     while True:
         mac_address = pa.locateCenterOnScreen("image\\110_mac-address.png", confidence=0.7)
-        if mac_address == None:
+        if mac_address is None:
             pa.scroll(-1000)
             sleep(1)
         else:
+            pa.moveTo(mac_address.x, mac_address.y)
+            sleep(1)
             pa.click(mac_address.x, mac_address.y)
             break
 
-    sleep(6)
+    # sleep(6)
 
-    delete_mac = pa.locateCenterOnScreen("image\\110_delete_mac.png", confidence=0.7)
+    delete_mac = None
+    while True:
+        b = pa.locateCenterOnScreen("image\\110_delete_mac.png", confidence=0.7)
+        if b is not None:
+            delete_mac = b
+            break
+        else:
+            sleep(2)
+            print("Жду надпись 'Удалить записи' ...")
+
+    pa.moveTo(delete_mac.x, delete_mac.y)
+    sleep(1)
     pa.click(delete_mac.x, delete_mac.y)
     sleep(1)
     pa.click(1070, 150)
     sleep(1)
 
     link_main = pa.locateCenterOnScreen("image\\110_userside.png", confidence=0.7)
+    pa.moveTo(link_main.x, link_main.y)
+    sleep(1)
     pa.click(link_main.x, link_main.y)
 
     with open('log.txt', 'a') as line:
         line.writelines("#################################################" + '\n' + '\n')
 
-    # break
+    print('END', '#' * 30, "\n")
+    
