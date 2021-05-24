@@ -2,6 +2,7 @@ import pyautogui as pa
 from time import sleep
 import pytesseract as pt
 import cv2
+import shutil
 
 pt.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 flag = True
@@ -23,6 +24,7 @@ while flag:
     ip = ""
     uplink_port = ""
     uplink_mac = ""
+    # mac_pos = pa.locateOnScreen("image\\110_search_mac_main.png", confidence=0.8)
     mac_pos = None
 
     while True:
@@ -35,7 +37,23 @@ while flag:
             print("Жду главный экран...")
 
     try:
-        pa.screenshot('temp_img\\000_110_main_port_mac.png', region=(415, mac_pos[1] + 42, 900, 19))
+        # pa.screenshot('temp_img\\110_main_port.png',                                          >>>>>>>>>>>>>>>>>>>>>>
+        #               region=(1050, mac_pos[1] + 42, 76, 19))  # скрин номера uplink-порта
+        # uplink_port_img = cv2.imread('temp_img\\110_main_port.png')
+        # uplink_port_img = cv2.cvtColor(uplink_port_img, cv2.COLOR_BGR2RGB)
+        # config = r'--oem 3 --psm 6'
+        # uplink_port = pt.image_to_string(uplink_port_img, config=config)
+        # uplink_port = uplink_port.strip().split("/")[-1]
+        #
+        # pa.screenshot('temp_img\\110_main_mac.png',
+        #               region=(1130, mac_pos[1] + 42, 40, 19))  # скрин количества мак-адресов
+        # uplink_mac_img = cv2.imread('temp_img\\110_main_mac.png')
+        # uplink_mac_img = cv2.cvtColor(uplink_mac_img, cv2.COLOR_BGR2RGB)
+        # config = r'--oem 3 --psm 6'
+        # uplink_mac = pt.image_to_string(uplink_mac_img, config=config)
+        # uplink_mac = uplink_mac.strip()                                                       <<<<<<<<<<<<<<<<<<<<<<
+
+        pa.screenshot('temp_img\\000_110_main_port_mac.png', region=(415, mac_pos[1] + 42, 1100, 19))
         uplink_port_img = cv2.imread('temp_img\\000_110_main_port_mac.png')
         uplink_port_img = cv2.cvtColor(uplink_port_img, cv2.COLOR_BGR2RGB)
         config = r'--oem 3 --psm 6'
@@ -118,6 +136,7 @@ while flag:
 
     # ДЕЛАЕМ СКРИНЫ ОБЛАСТЕЙ "MAC" И "DESCR"  ************************************************************************
 
+    #    i = 1
     dict_i = 1
     dict_j = 1
     dict1 = {}
@@ -221,7 +240,7 @@ while flag:
             dict_j += 1
 
         end_page = pa.locateCenterOnScreen("image\\110_end_page.png", confidence=0.9)
-        if end_page is None:
+        if end_page is None:  # <================================================================ if end_page == None:
             pa.scroll(-1000)
             sleep(0.5)
         else:
@@ -241,8 +260,27 @@ while flag:
     unique_numbers = list(set(list3))
     with open('110_log.txt', 'a') as line:
         line.writelines(str(unique_numbers) + '\n')
-        
     print(unique_numbers)
+
+    # print(uplink_port)                                                                        >>>>>>>>>>>>>>>>>>>>>>
+    #
+    # if uplink_port.find(",") != -1:
+    #     uplink_port = uplink_port.replace(",", "")
+    # if uplink_port.find(".") != -1:
+    #     uplink_port = uplink_port.replace(".", "")
+    # if uplink_port.find("V") != -1:
+    #     uplink_port = uplink_port.replace("V", "")
+    #
+    # unique_numbers.remove(uplink_port)
+    #
+    # # преобразуем в строку
+    # downlink_port = ",".join(unique_numbers)
+    # print("UPLINK:", uplink_port)
+    # print("DOWNLINK:", downlink_port)
+    # with open('110_log.txt', 'a') as line:
+    #     line.writelines("UPLINK: " + uplink_port + '\n')
+    #     line.writelines("DOWNLINK: " + downlink_port + '\n')                                  <<<<<<<<<<<<<<<<<<<<<<
+
     print(uplink_port_mac, '<<<')
 
     if uplink_port_mac.find(",") != -1:
@@ -261,13 +299,35 @@ while flag:
 
     unique_numbers.remove(uplink_port_mac)
 
+    index_dwn_p = 0
+    for dwn_p in unique_numbers:
+        if "2326TP" in uplink_port_mac_description:
+            if int(dwn_p) <= 2:
+                dwn_p = int(dwn_p) + 24
+                unique_numbers[index_dwn_p] = str(dwn_p)
+                index_dwn_p += 1
+            else:
+                unique_numbers[index_dwn_p] = str(dwn_p)
+                index_dwn_p += 1
+        elif "2352" in uplink_port_mac_description:
+            if int(dwn_p) <= 4:
+                dwn_p = int(dwn_p) + 48
+                unique_numbers[index_dwn_p] = str(dwn_p)
+                index_dwn_p += 1
+            else:
+                unique_numbers[index_dwn_p] = str(dwn_p)
+                index_dwn_p += 1
+
+    print("МОДЕЛЬ:", uplink_port_mac_description)
+    print("ДЕСКРИПШН:", unique_numbers)
+
     # преобразуем в строку
     downlink_port = ",".join(unique_numbers)
     if "2326TP" in uplink_port_mac_description:  # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Обработка порта Хуавей
         uplink_port_mac = str(24 + int(uplink_port_mac))
 
-    if "2352TP" in uplink_port_mac_description:
-        uplink_port_mac = str(49 + int(uplink_port_mac))
+    elif "2352P" in uplink_port_mac_description:
+        uplink_port_mac = str(48 + int(uplink_port_mac))
 
     print("UPLINK:", uplink_port_mac)
     print("DOWNLINK:", downlink_port)
@@ -281,13 +341,13 @@ while flag:
     # if pix[0] == 255:
     #     break
     #
-    # 
+    # #
     #
     # end_line = "#" * 30 + "\n"
     # with open("log.txt", "a") as file:
     #     file.write(end_line)
     # print()  # разделительная полоса
-    #
+
     # print('END', '#' * 30, "\n")
 
     ##################################################################################################################
@@ -314,6 +374,7 @@ while flag:
 
     uplink = pa.locateCenterOnScreen("image\\110_uplink.png", confidence=0.8)
     pa.tripleClick(uplink.x + 100, uplink.y)
+    # pa.typewrite(uplink_port)                                                                 <<<<<<<<<<<<<<<<<<<<<<
     pa.typewrite(uplink_port_mac)
 
     downlink = pa.locateCenterOnScreen("image\\110_downlink.png", confidence=0.8)
@@ -368,4 +429,6 @@ while flag:
         line.writelines("#################################################" + '\n' + '\n')
 
     print('END', '#' * 30, "\n")
-    
+
+    # shutil.rmtree('temp_img\\')
+    # break
